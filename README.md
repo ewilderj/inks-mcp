@@ -16,7 +16,10 @@ This MCP server provides the following tools for LLMs:
 - **analyze_color**: Analyze any color and find the closest matching inks
 
 ### 🎨 Recommendation Tools
-- **get_color_palette**: Generate themed ink palettes for different moods and styles
+- **get_color_palette**: Generate sophisticated themed ink palettes with color theory support
+  - 13 predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest)
+  - Color harmony generation (complementary, analogous, triadic, split-complementary)
+  - Custom hex color palettes
 
 ## Installation
 
@@ -148,17 +151,44 @@ Analyze a color and provide fountain pen ink context.
 ```
 
 ### get_color_palette
-Generate a themed palette of fountain pen inks.
+Generate a themed or harmony-based palette of fountain pen inks with sophisticated color theory support.
 
 **Parameters:**
-- `theme` (string): Theme for the palette ("warm", "cool", "earth", "ocean", "autumn", "spring")
+- `theme` (string): Theme name, comma-separated hex colors, or single hex color for harmony generation
 - `palette_size` (number, optional): Number of inks in palette (default: 5)
+- `harmony` (string, optional): Color harmony rule when using single hex color
 
-**Example:**
+**Supported Themes:**
+- **Classic**: warm, cool, earth, ocean, autumn, spring
+- **Seasonal**: summer, winter  
+- **Mood**: pastel, vibrant, monochrome
+- **Atmospheric**: sunset, forest
+
+**Harmony Rules:**
+- **complementary**: Base color + opposite color
+- **analogous**: Base color + adjacent colors  
+- **triadic**: Base color + two equidistant colors
+- **split-complementary**: Base color + colors adjacent to complement
+
+**Examples:**
 ```json
+// Predefined theme
 {
-  "theme": "ocean",
-  "palette_size": 6
+  "theme": "sunset",
+  "palette_size": 4
+}
+
+// Custom hex colors
+{
+  "theme": "#FF6B35,#F7931E,#FFD700",
+  "palette_size": 3
+}
+
+// Color harmony generation
+{
+  "theme": "#2E5984", 
+  "harmony": "complementary",
+  "palette_size": 2
 }
 ```
 
@@ -196,6 +226,28 @@ inks-mcp/
 
 ### Testing
 You can test the server by running it and sending MCP protocol messages via stdin/stdout, or integrate it with an MCP-compatible client.
+
+### Testing
+Run the comprehensive test suite to validate all functionality:
+
+```bash
+# Run all tests
+npm test
+
+# Run individual test categories
+cd test
+node test-enhanced-palette.js    # Palette generation features
+node test-mcp-palette.js        # MCP protocol compliance
+node test-schema.js             # Tool schema validation
+node test-harmony-direct.js     # Color harmony algorithms
+```
+
+The test suite covers:
+- ✅ 13 predefined themes + 4 harmony rules
+- ✅ Custom color palette generation
+- ✅ MCP protocol compliance
+- ✅ Error handling and validation
+- ✅ Color space conversions (BGR→RGB, RGB↔HSL)
 
 ## Color Matching Algorithm
 
