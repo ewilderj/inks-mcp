@@ -12,15 +12,18 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 import { InkColor, InkSearchData, SearchResult, ColorAnalysis, PaletteResult } from './types.js';
-import { 
-  hexToRgb, 
+import {
+  hexToRgb,
   bgrToRgb,
   rgbToBgr,
-  rgbToHex, 
-  findClosestInks, 
-  getColorFamily, 
-  getColorDescription, 
-  createSearchResult 
+  rgbToHex,
+  findClosestInks,
+  getColorFamily,
+  getColorDescription,
+  createSearchResult,
+  rgbToHsl,
+  hslToRgb,
+  generateHarmonyColors,
 } from './utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -174,18 +177,22 @@ class InkMCPServer {
           },
           {
             name: 'get_color_palette',
-            description: 'Generate a themed palette of inks',
+            description: 'Generate a themed or harmony-based palette of inks. Use a theme name, a list of hex colors, or a base color with a harmony rule.',
             inputSchema: {
               type: 'object',
               properties: {
                 theme: {
                   type: 'string',
-                  description: 'Theme for the palette (e.g., "warm", "cool", "earth", "ocean")',
+                  description: 'Theme for the palette (e.g., "warm", "ocean"), a comma-separated list of hex colors, or a single hex color if using a harmony rule.',
                 },
                 palette_size: {
                   type: 'number',
                   description: 'Number of inks in the palette (default: 5)',
                   default: 5,
+                },
+                harmony: {
+                  type: 'string',
+                  description: 'Optional harmony rule to apply to the base color specified in `theme`. Can be one of: complementary, analogous, triadic, split-complementary.',
                 },
               },
               required: ['theme'],
@@ -230,8 +237,9 @@ class InkMCPServer {
 
           case 'get_color_palette':
             return await this.getColorPalette(
-              args.theme as string, 
-              (args.palette_size as number) || 5
+              args.theme as string,
+              (args.palette_size as number) || 5,
+              args.harmony as any
             );
 
           default:
@@ -390,18 +398,11 @@ class InkMCPServer {
     }
   }
 
-  private async getColorPalette(theme: string, paletteSize: number): Promise<any> {
-    // TODO: Improve color palette generation strategy
-    // Issues to address:
-    // 1. Silent fallback to 'cool' theme for unknown themes (user doesn't know they got fallback)
-    // 2. Limited predefined themes - should add: summer, winter, pastel, vibrant, monochrome, sunset, forest
-    // 3. No way to specify custom color targets - should allow hex color arrays as theme input
-    // 4. Palette generation could be smarter - currently just finds closest match to predefined colors
-    // 5. Should validate theme names and provide helpful error messages
-    // 6. Could add color harmony rules (complementary, triadic, analogous) for better palettes
-    // 7. Palette size is limited by number of predefined colors (usually 5) - should generate more varied colors
-    // 8. No deduplication - could return same ink multiple times if it's closest to multiple target colors
-    
+  private async getColorPalette(
+    theme: string, 
+    paletteSize: number,
+    harmony?: 'complementary' | 'analogous' | 'triadic' | 'split-complementary'
+  ): Promise<any> {
     const themeColors: { [key: string]: [number, number, number][] } = {
       warm: [[255, 100, 50], [255, 150, 0], [200, 80, 80], [180, 120, 60], [220, 180, 100]],
       cool: [[50, 150, 255], [100, 200, 200], [150, 100, 255], [80, 180, 150], [120, 120, 200]],
@@ -409,17 +410,49 @@ class InkMCPServer {
       ocean: [[0, 119, 190], [0, 150, 136], [72, 201, 176], [135, 206, 235], [25, 25, 112]],
       autumn: [[255, 140, 0], [255, 69, 0], [220, 20, 60], [184, 134, 11], [139, 69, 19]],
       spring: [[154, 205, 50], [124, 252, 0], [173, 255, 47], [50, 205, 50], [0, 255, 127]],
+      summer: [[255, 235, 59], [255, 193, 7], [76, 175, 80], [139, 195, 74], [3, 169, 244]],
+      winter: [[224, 224, 224], [144, 164, 174], [96, 125, 139], [33, 150, 243], [0, 0, 128]],
+      pastel: [[255, 204, 204], [204, 255, 204], [204, 204, 255], [255, 255, 204], [255, 204, 255]],
+      vibrant: [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0], [255, 0, 255]],
+      monochrome: [[255, 255, 255], [224, 224, 224], [192, 192, 192], [128, 128, 128], [64, 64, 64], [0, 0, 0]],
+      sunset: [[255, 224, 130], [255, 170, 85], [255, 110, 80], [200, 80, 120], [100, 60, 110]],
+      forest: [[34, 85, 34], [20, 60, 20], [60, 100, 60], [100, 140, 100], [140, 180, 140]],
     };
 
-    const targetColors = themeColors[theme.toLowerCase()] || themeColors.cool;
+    let targetColors: [number, number, number][];
+    const lowerCaseTheme = theme.toLowerCase();
+
+    if (harmony) {
+      try {
+        const baseRgb = hexToRgb(theme);
+        const baseHsl = rgbToHsl(baseRgb);
+        const harmonyHsl = generateHarmonyColors(baseHsl, harmony);
+        targetColors = harmonyHsl.map(hsl => hslToRgb(hsl));
+      } catch (error) {
+        throw new Error('Invalid base color for harmony rule. Please use a single valid hex code.');
+      }
+    } else if (themeColors[lowerCaseTheme]) {
+      targetColors = themeColors[lowerCaseTheme];
+    } else if (theme.startsWith('#') || theme.includes(',')) {
+      try {
+        targetColors = theme.split(',').map(hex => hexToRgb(hex.trim()));
+      } catch (error) {
+        throw new Error('Invalid custom palette format. Please use a comma-separated list of hex codes, e.g., "#FF0000,#00FF00,#0000FF"');
+      }
+    } else {
+      throw new Error(`Unknown theme: "${theme}". Available themes are: ${Object.keys(themeColors).join(', ')}`);
+    }
+
     const paletteInks: SearchResult[] = [];
+    const usedInkIds = new Set<string>();
 
     for (let i = 0; i < Math.min(paletteSize, targetColors.length); i++) {
       const targetRgb = targetColors[i];
-      const closestInks = findClosestInks(targetRgb, this.inkColors, 1);
+      const closestInks = findClosestInks(targetRgb, this.inkColors, 5).filter(ink => !usedInkIds.has(ink.ink_id));
       
       if (closestInks.length > 0) {
         const ink = closestInks[0];
+        usedInkIds.add(ink.ink_id);
         const metadata = this.getInkMetadata(ink.ink_id);
         paletteInks.push(createSearchResult(ink, metadata, ink.distance));
       }
