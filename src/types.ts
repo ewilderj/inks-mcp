@@ -56,4 +56,10 @@ export interface PaletteResult {
   theme: string;
   inks: SearchResult[];
   description: string;
+  temperature_analysis?: {
+    average_temperature: number;
+    temperature_range: [number, number];
+    dominant_category: 'warm' | 'cool' | 'neutral';
+    temperature_harmony: 'monochromatic' | 'complementary' | 'mixed';
+  };
 }

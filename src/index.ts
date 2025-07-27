@@ -128,6 +128,11 @@ class InkMCPServer {
                   description: 'Maximum number of results to return (default: 20)',
                   default: 20,
                 },
+                temperature_filter: {
+                  type: 'string',
+                  description: 'Filter by temperature category: "warm", "cool", or "neutral"',
+                  enum: ['warm', 'cool', 'neutral'],
+                },
               },
               required: ['color'],
             },
@@ -200,7 +205,7 @@ class InkMCPServer {
           },
           {
             name: 'get_color_palette',
-            description: 'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color.',
+            description: 'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, neutral, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest, warm-reds, cool-blues, neutral-grays, temperature-gradient), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color. Includes temperature analysis for all palettes.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -245,7 +250,8 @@ class InkMCPServer {
           case 'search_inks_by_color':
             return await this.searchInksByColor(
               args.color as string, 
-              (args.max_results as number) || 20
+              (args.max_results as number) || 20,
+              args.temperature_filter as 'warm' | 'cool' | 'neutral' | undefined
             );
 
           case 'get_ink_details':
@@ -316,10 +322,26 @@ class InkMCPServer {
     };
   }
 
-  private async searchInksByColor(colorHex: string, maxResults: number) {
+  private async searchInksByColor(
+    colorHex: string, 
+    maxResults: number, 
+    temperatureFilter?: 'warm' | 'cool' | 'neutral'
+  ) {
     try {
       const targetRgb = hexToRgb(colorHex);
-      const closestInks = findClosestInks(targetRgb, this.inkColors, maxResults);
+      let closestInks = findClosestInks(targetRgb, this.inkColors, maxResults * 2); // Get more to filter
+      
+      // Apply temperature filter if specified
+      if (temperatureFilter) {
+        closestInks = closestInks.filter(ink => {
+          const inkTemp = calculateColorTemperature(ink.rgb);
+          const inkCategory = getTemperatureCategory(inkTemp);
+          return inkCategory === temperatureFilter;
+        });
+      }
+      
+      // Limit to requested number of results
+      closestInks = closestInks.slice(0, maxResults);
       
       const results: SearchResult[] = closestInks.map(ink => {
         const metadata = this.getInkMetadata(ink.ink_id);
@@ -333,6 +355,7 @@ class InkMCPServer {
             text: JSON.stringify({
               target_color: colorHex,
               target_rgb: targetRgb,
+              temperature_filter: temperatureFilter || 'none',
               results_count: results.length,
               results,
             }, null, 2),
@@ -576,6 +599,7 @@ class InkMCPServer {
     const themeColors: { [key: string]: [number, number, number][] } = {
       warm: [[255, 100, 50], [255, 150, 0], [200, 80, 80], [180, 120, 60], [220, 180, 100]],
       cool: [[50, 150, 255], [100, 200, 200], [150, 100, 255], [80, 180, 150], [120, 120, 200]],
+      neutral: [[140, 140, 140], [160, 160, 160], [120, 130, 125], [135, 125, 130], [125, 135, 140]],
       earth: [[139, 69, 19], [160, 82, 45], [210, 180, 140], [107, 142, 35], [85, 107, 47]],
       ocean: [[0, 119, 190], [0, 150, 136], [72, 201, 176], [135, 206, 235], [25, 25, 112]],
       autumn: [[255, 140, 0], [255, 69, 0], [220, 20, 60], [184, 134, 11], [139, 69, 19]],
@@ -587,6 +611,11 @@ class InkMCPServer {
       monochrome: [[255, 255, 255], [224, 224, 224], [192, 192, 192], [128, 128, 128], [64, 64, 64], [0, 0, 0]],
       sunset: [[255, 224, 130], [255, 170, 85], [255, 110, 80], [200, 80, 120], [100, 60, 110]],
       forest: [[34, 85, 34], [20, 60, 20], [60, 100, 60], [100, 140, 100], [140, 180, 140]],
+      // New temperature-specific themes
+      'warm-reds': [[200, 50, 50], [255, 100, 80], [220, 80, 60], [255, 130, 100], [180, 40, 40]],
+      'cool-blues': [[50, 100, 200], [80, 150, 255], [100, 180, 230], [60, 120, 180], [40, 80, 160]],
+      'neutral-grays': [[120, 120, 120], [140, 140, 140], [160, 160, 160], [100, 100, 100], [180, 180, 180]],
+      'temperature-gradient': [[255, 80, 50], [255, 150, 100], [180, 180, 180], [100, 150, 200], [50, 100, 255]], // Warm to cool
     };
 
     let targetColors: [number, number, number][];
@@ -628,10 +657,14 @@ class InkMCPServer {
       }
     }
 
+    // Calculate temperature analysis for the palette
+    const temperatureAnalysis = this.calculatePaletteTemperatureAnalysis(paletteInks);
+
     const palette: PaletteResult = {
       theme,
       inks: paletteInks,
       description: `A curated palette of ${paletteInks.length} fountain pen inks matching the ${theme} theme.`,
+      temperature_analysis: temperatureAnalysis,
     };
 
     return {
@@ -641,6 +674,56 @@ class InkMCPServer {
           text: JSON.stringify(palette, null, 2),
         },
       ],
+    };
+  }
+
+  private calculatePaletteTemperatureAnalysis(inks: SearchResult[]): {
+    average_temperature: number;
+    temperature_range: [number, number];
+    dominant_category: 'warm' | 'cool' | 'neutral';
+    temperature_harmony: 'monochromatic' | 'complementary' | 'mixed';
+  } {
+    if (inks.length === 0) {
+      return {
+        average_temperature: 4250,
+        temperature_range: [4250, 4250],
+        dominant_category: 'neutral',
+        temperature_harmony: 'monochromatic',
+      };
+    }
+
+    // Calculate temperatures for all inks
+    const temperatures = inks.map(result => calculateColorTemperature(result.ink.rgb));
+    const categories = temperatures.map(temp => getTemperatureCategory(temp));
+
+    // Calculate statistics
+    const avgTemp = temperatures.reduce((sum, temp) => sum + temp, 0) / temperatures.length;
+    const minTemp = Math.min(...temperatures);
+    const maxTemp = Math.max(...temperatures);
+
+    // Determine dominant category
+    const categoryCounts = { warm: 0, cool: 0, neutral: 0 };
+    categories.forEach(cat => categoryCounts[cat]++);
+    const dominantCategory = Object.entries(categoryCounts)
+      .reduce((max, [cat, count]) => count > max[1] ? [cat, count] : max, ['neutral', 0])[0] as 'warm' | 'cool' | 'neutral';
+
+    // Determine temperature harmony
+    let temperatureHarmony: 'monochromatic' | 'complementary' | 'mixed';
+    const tempRange = maxTemp - minTemp;
+    
+    if (tempRange < 800) { // Close temperatures
+      temperatureHarmony = 'monochromatic';
+    } else if (tempRange > 2000 && categories.includes('warm') && categories.includes('cool')) {
+      temperatureHarmony = 'complementary';
+    } else {
+      temperatureHarmony = 'mixed';
+    }
+
+    return {
+      average_temperature: Math.round(avgTemp),
+      temperature_range: [minTemp, maxTemp],
+      dominant_category: dominantCategory,
+      temperature_harmony: temperatureHarmony,
     };
   }
 
