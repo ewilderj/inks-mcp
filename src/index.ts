@@ -177,13 +177,13 @@ class InkMCPServer {
           },
           {
             name: 'get_color_palette',
-            description: 'Generate a themed or harmony-based palette of inks. Use a theme name, a list of hex colors, or a base color with a harmony rule.',
+            description: 'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color.',
             inputSchema: {
               type: 'object',
               properties: {
                 theme: {
                   type: 'string',
-                  description: 'Theme for the palette (e.g., "warm", "ocean"), a comma-separated list of hex colors, or a single hex color if using a harmony rule.',
+                  description: 'Theme name (e.g., "warm", "ocean"), comma-separated hex colors (e.g., "#FF0000,#00FF00"), or single hex color for harmony generation (e.g., "#FF0000").',
                 },
                 palette_size: {
                   type: 'number',
@@ -192,10 +192,12 @@ class InkMCPServer {
                 },
                 harmony: {
                   type: 'string',
-                  description: 'Optional harmony rule to apply to the base color specified in `theme`. Can be one of: complementary, analogous, triadic, split-complementary.',
+                  description: 'Color harmony rule to apply when theme is a single hex color. Options: "complementary", "analogous", "triadic", "split-complementary". Requires theme to be a valid hex color.',
+                  enum: ['complementary', 'analogous', 'triadic', 'split-complementary'],
                 },
               },
               required: ['theme'],
+              additionalProperties: false,
             },
           },
         ],
