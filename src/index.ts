@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
-import { InkColor, InkSearchData, SearchResult, ColorAnalysis, PaletteResult } from './types.js';
+import { InkColor, InkSearchData, SearchResult, ColorAnalysis, PaletteResult, TemperatureAnalysis, ColorAnalysisWithTemperature } from './types.js';
 import {
   hexToRgb,
   bgrToRgb,
@@ -24,6 +24,10 @@ import {
   rgbToHsl,
   hslToRgb,
   generateHarmonyColors,
+  calculateColorTemperature,
+  getTemperatureCategory,
+  getTemperatureDescription,
+  getColorFamilyTemperatureBias,
 } from './utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -176,6 +180,25 @@ class InkMCPServer {
             },
           },
           {
+            name: 'analyze_color_temperature',
+            description: 'Analyze color temperature characteristics of a given color',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                color: {
+                  type: 'string',
+                  description: 'Hex color code (e.g., "#FF5733")',
+                },
+                include_recommendations: {
+                  type: 'boolean',
+                  description: 'Include temperature-based ink recommendations',
+                  default: false,
+                },
+              },
+              required: ['color'],
+            },
+          },
+          {
             name: 'get_color_palette',
             description: 'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color.',
             inputSchema: {
@@ -236,6 +259,12 @@ class InkMCPServer {
 
           case 'analyze_color':
             return await this.analyzeColor(args.color as string);
+
+          case 'analyze_color_temperature':
+            return await this.analyzeColorTemperature(
+              args.color as string,
+              args.include_recommendations as boolean || false
+            );
 
           case 'get_color_palette':
             return await this.getColorPalette(
@@ -379,12 +408,24 @@ class InkMCPServer {
         return createSearchResult(ink, metadata, ink.distance);
       });
 
-      const analysis: ColorAnalysis = {
+      // Add temperature analysis to existing color analysis
+      const tempKelvin = calculateColorTemperature(rgb);
+      const temperatureAnalysis: TemperatureAnalysis = {
+        kelvin: tempKelvin,
+        category: getTemperatureCategory(tempKelvin),
+        description: getTemperatureDescription(rgb),
+        intensity: this.calculateTemperatureIntensity(tempKelvin),
+        seasonal_match: this.getSeasonalMatches(tempKelvin, getColorFamily(rgb)),
+        complementary_temperature: this.getComplementaryTemperature(tempKelvin),
+      };
+
+      const analysis: ColorAnalysisWithTemperature = {
         hex: colorHex,
         rgb,
         closest_inks: results,
-        color_family: getColorFamily(rgb), // No conversion needed
-        description: getColorDescription(rgb), // No conversion needed
+        color_family: getColorFamily(rgb),
+        description: getColorDescription(rgb),
+        temperature: temperatureAnalysis,
       };
 
       return {
@@ -398,6 +439,133 @@ class InkMCPServer {
     } catch (error) {
       throw new Error(`Invalid color format: ${colorHex}. Please use hex format like #FF5733`);
     }
+  }
+
+  private async analyzeColorTemperature(colorHex: string, includeRecommendations: boolean): Promise<any> {
+    try {
+      const rgb = hexToRgb(colorHex);
+      const tempKelvin = calculateColorTemperature(rgb);
+      const colorFamily = getColorFamily(rgb);
+      
+      const temperatureAnalysis: TemperatureAnalysis = {
+        kelvin: tempKelvin,
+        category: getTemperatureCategory(tempKelvin),
+        description: getTemperatureDescription(rgb),
+        intensity: this.calculateTemperatureIntensity(tempKelvin),
+        seasonal_match: this.getSeasonalMatches(tempKelvin, colorFamily),
+        complementary_temperature: this.getComplementaryTemperature(tempKelvin),
+      };
+
+      let result: any = {
+        color: colorHex,
+        rgb,
+        color_family: colorFamily,
+        temperature: temperatureAnalysis,
+      };
+
+      if (includeRecommendations) {
+        const recommendations = await this.getTemperatureBasedRecommendations(rgb, tempKelvin);
+        result.temperature_recommendations = recommendations;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`Invalid color format: ${colorHex}. Please use hex format like #FF5733`);
+    }
+  }
+
+  private calculateTemperatureIntensity(tempKelvin: number): number {
+    // Calculate intensity as deviation from neutral (4250K midpoint)
+    const neutral = 4250;
+    const maxDeviation = 2250; // From 2000K to 6500K
+    const deviation = Math.abs(tempKelvin - neutral);
+    return Math.min(1, deviation / maxDeviation);
+  }
+
+  private getSeasonalMatches(tempKelvin: number, colorFamily: string): string[] {
+    const seasons: string[] = [];
+    
+    if (tempKelvin < 3200) { // Very warm
+      seasons.push('autumn', 'winter');
+    } else if (tempKelvin < 3800) { // Warm
+      seasons.push('autumn');
+      if (colorFamily === 'yellow' || colorFamily === 'orange') {
+        seasons.push('summer');
+      }
+    } else if (tempKelvin < 5200) { // Neutral
+      seasons.push('spring', 'summer', 'autumn');
+    } else if (tempKelvin < 6000) { // Cool
+      seasons.push('spring', 'summer');
+    } else { // Very cool
+      seasons.push('winter', 'spring');
+    }
+    
+    return seasons;
+  }
+
+  private getComplementaryTemperature(tempKelvin: number): number {
+    // Calculate complementary temperature (opposite on the warm/cool spectrum)
+    const neutral = 4250;
+    const distance = tempKelvin - neutral;
+    return Math.max(2000, Math.min(8000, neutral - distance));
+  }
+
+  private async getTemperatureBasedRecommendations(
+    targetRgb: [number, number, number], 
+    targetTemp: number
+  ): Promise<{
+    similar_temperature_inks: SearchResult[];
+    contrasting_temperature_inks: SearchResult[];
+    seasonal_suggestions: string[];
+  }> {
+    // Find inks with similar and contrasting temperatures
+    const temperatureThreshold = 500; // Kelvin
+    const contrastThreshold = 1500; // Kelvin
+    
+    const allInksWithTemperature = this.inkColors.map(ink => {
+      const inkTemp = calculateColorTemperature(ink.rgb);
+      return {
+        ...ink,
+        temperature: inkTemp,
+        temperatureDifference: Math.abs(inkTemp - targetTemp),
+      };
+    });
+
+    // Similar temperature inks
+    const similarTempInks = allInksWithTemperature
+      .filter(ink => ink.temperatureDifference <= temperatureThreshold)
+      .sort((a, b) => a.temperatureDifference - b.temperatureDifference)
+      .slice(0, 5)
+      .map(ink => {
+        const metadata = this.getInkMetadata(ink.ink_id);
+        return createSearchResult(ink, metadata, ink.temperatureDifference);
+      });
+
+    // Contrasting temperature inks
+    const contrastingTempInks = allInksWithTemperature
+      .filter(ink => ink.temperatureDifference >= contrastThreshold)
+      .sort((a, b) => b.temperatureDifference - a.temperatureDifference)
+      .slice(0, 5)
+      .map(ink => {
+        const metadata = this.getInkMetadata(ink.ink_id);
+        return createSearchResult(ink, metadata, ink.temperatureDifference);
+      });
+
+    const colorFamily = getColorFamily(targetRgb);
+    const seasonalSuggestions = this.getSeasonalMatches(targetTemp, colorFamily);
+
+    return {
+      similar_temperature_inks: similarTempInks,
+      contrasting_temperature_inks: contrastingTempInks,
+      seasonal_suggestions: seasonalSuggestions,
+    };
   }
 
   private async getColorPalette(

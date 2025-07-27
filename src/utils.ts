@@ -236,6 +236,134 @@ export function generateHarmonyColors(
 }
 
 /**
+ * Calculate color temperature based on RGB values
+ * Returns temperature in Kelvin (approximate)
+ * Uses a modified CCT calculation with hue-based adjustments
+ */
+export function calculateColorTemperature(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb;
+  
+  // Handle grayscale colors
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max - min < 15) { // Very low saturation = neutral
+    const brightness = (r + g + b) / 3;
+    // Darker grays appear slightly warmer, lighter grays slightly cooler
+    return 4250 + (brightness - 127.5) * 3;
+  }
+  
+  // Get HSL for hue-based calculation
+  const hsl = rgbToHsl(rgb);
+  const hue = hsl[0];
+  const saturation = hsl[1];
+  const lightness = hsl[2];
+  
+  // Base temperature calculation based on hue position
+  let baseTemp;
+  if (hue >= 0 && hue < 60) { // Red to Yellow - warm
+    baseTemp = 2800 + (hue / 60) * 800; // 2800K to 3600K
+  } else if (hue >= 60 && hue < 120) { // Yellow to Green - warming to neutral
+    baseTemp = 3600 + ((hue - 60) / 60) * 1200; // 3600K to 4800K
+  } else if (hue >= 120 && hue < 180) { // Green to Cyan - neutral to cool
+    baseTemp = 4800 + ((hue - 120) / 60) * 1000; // 4800K to 5800K
+  } else if (hue >= 180 && hue < 240) { // Cyan to Blue - cool
+    baseTemp = 5800 + ((hue - 180) / 60) * 800; // 5800K to 6600K
+  } else if (hue >= 240 && hue < 300) { // Blue to Magenta - cool to neutral
+    baseTemp = 6600 - ((hue - 240) / 60) * 1600; // 6600K to 5000K
+  } else { // Magenta to Red - neutral to warm
+    baseTemp = 5000 - ((hue - 300) / 60) * 1200; // 5000K to 3800K
+  }
+  
+  // Saturation adjustment - more saturated colors are more extreme
+  const saturationBoost = saturation * 0.5;
+  if (baseTemp < 4250) { // Warm colors get warmer with saturation
+    baseTemp -= saturationBoost * 800;
+  } else { // Cool colors get cooler with saturation
+    baseTemp += saturationBoost * 1000;
+  }
+  
+  // Lightness adjustment - darker colors appear warmer
+  const lightnessAdjustment = (0.5 - lightness) * 400;
+  baseTemp -= lightnessAdjustment;
+  
+  // Clamp to reasonable range
+  return Math.max(2000, Math.min(8000, Math.round(baseTemp)));
+}
+
+/**
+ * Classify temperature as warm/cool/neutral
+ */
+export function getTemperatureCategory(tempKelvin: number): 'warm' | 'cool' | 'neutral' {
+  if (tempKelvin < 3500) return 'warm';
+  if (tempKelvin > 5000) return 'cool';
+  return 'neutral';
+}
+
+/**
+ * Get temperature description with intensity
+ */
+export function getTemperatureDescription(rgb: [number, number, number]): string {
+  const tempKelvin = calculateColorTemperature(rgb);
+  const category = getTemperatureCategory(tempKelvin);
+  const colorFamily = getColorFamily(rgb);
+  
+  let intensity = '';
+  if (category === 'warm') {
+    if (tempKelvin < 2800) intensity = 'very ';
+    else if (tempKelvin > 3300) intensity = 'slightly ';
+  } else if (category === 'cool') {
+    if (tempKelvin > 6500) intensity = 'very ';
+    else if (tempKelvin < 5500) intensity = 'slightly ';
+  }
+  
+  const familyDescriptor = getColorFamilyTemperatureDescriptor(colorFamily);
+  return `${intensity}${category}${familyDescriptor ? ` ${familyDescriptor}` : ''} tone`;
+}
+
+/**
+ * Calculate temperature bias for specific color families
+ */
+export function getColorFamilyTemperatureBias(colorFamily: string, rgb: [number, number, number]): number {
+  const baseTemp = calculateColorTemperature(rgb);
+  
+  // Family-specific temperature biases
+  const familyBiases: { [key: string]: number } = {
+    'red': -300,      // Reds tend to be warmer
+    'orange': -500,   // Oranges are very warm
+    'yellow': -200,   // Yellows are warm
+    'green': 100,     // Greens slightly cool
+    'blue': 800,      // Blues are cool
+    'purple': 300,    // Purples moderately cool
+    'magenta': -100,  // Magentas slightly warm
+    'cyan': 600,      // Cyans are cool
+    'teal': 400,      // Teals moderately cool
+    'gray': 0,        // Grays neutral
+  };
+  
+  const bias = familyBiases[colorFamily] || 0;
+  return Math.max(2000, Math.min(8000, baseTemp + bias));
+}
+
+/**
+ * Get color family-specific temperature descriptor
+ */
+function getColorFamilyTemperatureDescriptor(colorFamily: string): string {
+  const descriptors: { [key: string]: string } = {
+    'red': 'fiery',
+    'orange': 'golden',
+    'yellow': 'sunny',
+    'blue': 'icy',
+    'purple': 'cool',
+    'green': 'fresh',
+    'cyan': 'crisp',
+    'teal': 'aquatic',
+    'magenta': 'vibrant'
+  };
+  
+  return descriptors[colorFamily] || '';
+}
+
+/**
  * Create a SearchResult from ink data
  */
 export function createSearchResult(
