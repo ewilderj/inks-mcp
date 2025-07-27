@@ -13,7 +13,7 @@ import {
   generateHarmonyColors,
   findClosestInks, 
   createSearchResult 
-} from './dist/utils.js';
+} from '../dist/utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,8 +21,8 @@ const __dirname = dirname(__filename);
 console.log('🎨 Testing Enhanced get_color_palette Tool\n');
 
 // Load ink data (same as server)
-const rawInkColors = JSON.parse(readFileSync(join(__dirname, 'data/ink-colors.json'), 'utf8'));
-const searchData = JSON.parse(readFileSync(join(__dirname, 'data/search.json'), 'utf8'));
+const rawInkColors = JSON.parse(readFileSync(join(__dirname, '../data/ink-colors.json'), 'utf8'));
+const searchData = JSON.parse(readFileSync(join(__dirname, '../data/search.json'), 'utf8'));
 const inkColors = rawInkColors.map((ink) => ({
   ...ink,
   rgb: bgrToRgb(ink.rgb)
