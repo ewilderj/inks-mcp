@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides LLMs with specialized knowledge about fountain pen inks, enabling intelligent ink search, color matching, and recommendations.
 
+<a href="https://glama.ai/mcp/servers/@ewilderj/inks-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ewilderj/inks-mcp/badge" alt="Fountain Pen Ink Server MCP server" />
+</a>
+
 ## Features
 
 This MCP server provides the following tools for LLMs:
