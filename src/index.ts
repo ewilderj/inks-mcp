@@ -2,10 +2,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import Fuse from 'fuse.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,7 +42,7 @@ class InkMCPServer {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     this.setupToolHandlers();
@@ -57,11 +54,11 @@ class InkMCPServer {
       // Load ink colors and convert BGR to RGB immediately
       const inkColorsPath = path.join(__dirname, '../data/ink-colors.json');
       const rawInkColors = JSON.parse(fs.readFileSync(inkColorsPath, 'utf8'));
-      
+
       // Convert BGR to RGB at load time
       this.inkColors = rawInkColors.map((ink: any) => ({
         ...ink,
-        rgb: bgrToRgb(ink.rgb) // Convert BGR data to true RGB
+        rgb: bgrToRgb(ink.rgb), // Convert BGR data to true RGB
       }));
 
       // Load search metadata
@@ -76,14 +73,16 @@ class InkMCPServer {
         ignoreLocation: true,
       });
 
-      console.error(`Loaded ${this.inkColors.length} inks and ${this.inkSearchData.length} search entries (BGR→RGB converted)`);
+      console.error(
+        `Loaded ${this.inkColors.length} inks and ${this.inkSearchData.length} search entries (BGR→RGB converted)`,
+      );
     } catch (error) {
       console.error('Error loading ink data:', error);
     }
   }
 
   private getInkMetadata(inkId: string): InkSearchData | undefined {
-    return this.inkSearchData.find(item => item.ink_id === inkId);
+    return this.inkSearchData.find((item) => item.ink_id === inkId);
   }
 
   private setupToolHandlers() {
@@ -171,19 +170,26 @@ class InkMCPServer {
                   type: 'string',
                   description: 'Hex color code (e.g., "#FF5733")',
                 },
+                max_results: {
+                  type: 'number',
+                  description: 'Maximum number of closest inks to return (default: 5)',
+                  default: 5,
+                },
               },
               required: ['color'],
             },
           },
           {
             name: 'get_color_palette',
-            description: 'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color.',
+            description:
+              'Generate a themed or harmony-based palette of inks. Supports three modes: 1) Predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest), 2) Custom hex color lists (comma-separated), 3) Color harmony generation from a base hex color.',
             inputSchema: {
               type: 'object',
               properties: {
                 theme: {
                   type: 'string',
-                  description: 'Theme name (e.g., "warm", "ocean"), comma-separated hex colors (e.g., "#FF0000,#00FF00"), or single hex color for harmony generation (e.g., "#FF0000").',
+                  description:
+                    'Theme name (e.g., "warm", "ocean"), comma-separated hex colors (e.g., "#FF0000,#00FF00"), or single hex color for harmony generation (e.g., "#FF0000").',
                 },
                 palette_size: {
                   type: 'number',
@@ -192,7 +198,8 @@ class InkMCPServer {
                 },
                 harmony: {
                   type: 'string',
-                  description: 'Color harmony rule to apply when theme is a single hex color. Options: "complementary", "analogous", "triadic", "split-complementary". Requires theme to be a valid hex color.',
+                  description:
+                    'Color harmony rule to apply when theme is a single hex color. Options: "complementary", "analogous", "triadic", "split-complementary". Requires theme to be a valid hex color.',
                   enum: ['complementary', 'analogous', 'triadic', 'split-complementary'],
                 },
               },
@@ -215,14 +222,14 @@ class InkMCPServer {
         switch (name) {
           case 'search_inks_by_name':
             return await this.searchInksByName(
-              args.query as string, 
-              (args.max_results as number) || 20
+              args.query as string,
+              (args.max_results as number) || 20,
             );
 
           case 'search_inks_by_color':
             return await this.searchInksByColor(
-              args.color as string, 
-              (args.max_results as number) || 20
+              args.color as string,
+              (args.max_results as number) || 20,
             );
 
           case 'get_ink_details':
@@ -230,18 +237,18 @@ class InkMCPServer {
 
           case 'get_inks_by_maker':
             return await this.getInksByMaker(
-              args.maker as string, 
-              (args.max_results as number) || 50
+              args.maker as string,
+              (args.max_results as number) || 50,
             );
 
           case 'analyze_color':
-            return await this.analyzeColor(args.color as string);
+            return await this.analyzeColor(args.color as string, (args.max_results as number) || 5);
 
           case 'get_color_palette':
             return await this.getColorPalette(
               args.theme as string,
               (args.palette_size as number) || 5,
-              args.harmony as any
+              args.harmony as any,
             );
 
           default:
@@ -266,8 +273,8 @@ class InkMCPServer {
 
     for (const result of searchResults.slice(0, maxResults)) {
       const metadata = result.item;
-      const inkColor = this.inkColors.find(ink => ink.ink_id === metadata.ink_id);
-      
+      const inkColor = this.inkColors.find((ink) => ink.ink_id === metadata.ink_id);
+
       if (inkColor) {
         results.push(createSearchResult(inkColor, metadata));
       }
@@ -277,11 +284,15 @@ class InkMCPServer {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({
-            query,
-            results_count: results.length,
-            results,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              query,
+              results_count: results.length,
+              results,
+            },
+            null,
+            2,
+          ),
         },
       ],
     };
@@ -291,8 +302,8 @@ class InkMCPServer {
     try {
       const targetRgb = hexToRgb(colorHex);
       const closestInks = findClosestInks(targetRgb, this.inkColors, maxResults);
-      
-      const results: SearchResult[] = closestInks.map(ink => {
+
+      const results: SearchResult[] = closestInks.map((ink) => {
         const metadata = this.getInkMetadata(ink.ink_id);
         return createSearchResult(ink, metadata, ink.distance);
       });
@@ -301,12 +312,16 @@ class InkMCPServer {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({
-              target_color: colorHex,
-              target_rgb: targetRgb,
-              results_count: results.length,
-              results,
-            }, null, 2),
+            text: JSON.stringify(
+              {
+                target_color: colorHex,
+                target_rgb: targetRgb,
+                results_count: results.length,
+                results,
+              },
+              null,
+              2,
+            ),
           },
         ],
       };
@@ -316,7 +331,7 @@ class InkMCPServer {
   }
 
   private async getInkDetails(inkId: string) {
-    const inkColor = this.inkColors.find(ink => ink.ink_id === inkId);
+    const inkColor = this.inkColors.find((ink) => ink.ink_id === inkId);
     const metadata = this.getInkMetadata(inkId);
 
     if (!inkColor) {
@@ -329,12 +344,16 @@ class InkMCPServer {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({
-            ink_details: result,
-            hex_color: rgbToHex(inkColor.rgb), // Now actually RGB!
-            color_family: getColorFamily(inkColor.rgb),
-            color_description: getColorDescription(inkColor.rgb),
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              ink_details: result,
+              hex_color: rgbToHex(inkColor.rgb), // Now actually RGB!
+              color_family: getColorFamily(inkColor.rgb),
+              color_description: getColorDescription(inkColor.rgb),
+            },
+            null,
+            2,
+          ),
         },
       ],
     };
@@ -342,14 +361,14 @@ class InkMCPServer {
 
   private async getInksByMaker(maker: string, maxResults: number) {
     const makerLower = maker.toLowerCase();
-    const makerInks = this.inkSearchData.filter(item => 
-      item.maker.toLowerCase() === makerLower
-    ).slice(0, maxResults);
+    const makerInks = this.inkSearchData
+      .filter((item) => item.maker.toLowerCase() === makerLower)
+      .slice(0, maxResults);
 
     const results: SearchResult[] = [];
-    
+
     for (const metadata of makerInks) {
-      const inkColor = this.inkColors.find(ink => ink.ink_id === metadata.ink_id);
+      const inkColor = this.inkColors.find((ink) => ink.ink_id === metadata.ink_id);
       if (inkColor) {
         results.push(createSearchResult(inkColor, metadata));
       }
@@ -359,22 +378,26 @@ class InkMCPServer {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({
-            maker,
-            results_count: results.length,
-            results,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              maker,
+              results_count: results.length,
+              results,
+            },
+            null,
+            2,
+          ),
         },
       ],
     };
   }
 
-  private async analyzeColor(colorHex: string): Promise<any> {
+  private async analyzeColor(colorHex: string, maxResults: number = 5): Promise<any> {
     try {
       const rgb = hexToRgb(colorHex);
-      const closestInks = findClosestInks(rgb, this.inkColors, 5);
-      
-      const results: SearchResult[] = closestInks.map(ink => {
+      const closestInks = findClosestInks(rgb, this.inkColors, maxResults);
+
+      const results: SearchResult[] = closestInks.map((ink) => {
         const metadata = this.getInkMetadata(ink.ink_id);
         return createSearchResult(ink, metadata, ink.distance);
       });
@@ -401,24 +424,103 @@ class InkMCPServer {
   }
 
   private async getColorPalette(
-    theme: string, 
+    theme: string,
     paletteSize: number,
-    harmony?: 'complementary' | 'analogous' | 'triadic' | 'split-complementary'
+    harmony?: 'complementary' | 'analogous' | 'triadic' | 'split-complementary',
   ): Promise<any> {
     const themeColors: { [key: string]: [number, number, number][] } = {
-      warm: [[255, 100, 50], [255, 150, 0], [200, 80, 80], [180, 120, 60], [220, 180, 100]],
-      cool: [[50, 150, 255], [100, 200, 200], [150, 100, 255], [80, 180, 150], [120, 120, 200]],
-      earth: [[139, 69, 19], [160, 82, 45], [210, 180, 140], [107, 142, 35], [85, 107, 47]],
-      ocean: [[0, 119, 190], [0, 150, 136], [72, 201, 176], [135, 206, 235], [25, 25, 112]],
-      autumn: [[255, 140, 0], [255, 69, 0], [220, 20, 60], [184, 134, 11], [139, 69, 19]],
-      spring: [[154, 205, 50], [124, 252, 0], [173, 255, 47], [50, 205, 50], [0, 255, 127]],
-      summer: [[255, 235, 59], [255, 193, 7], [76, 175, 80], [139, 195, 74], [3, 169, 244]],
-      winter: [[224, 224, 224], [144, 164, 174], [96, 125, 139], [33, 150, 243], [0, 0, 128]],
-      pastel: [[255, 204, 204], [204, 255, 204], [204, 204, 255], [255, 255, 204], [255, 204, 255]],
-      vibrant: [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0], [255, 0, 255]],
-      monochrome: [[255, 255, 255], [224, 224, 224], [192, 192, 192], [128, 128, 128], [64, 64, 64], [0, 0, 0]],
-      sunset: [[255, 224, 130], [255, 170, 85], [255, 110, 80], [200, 80, 120], [100, 60, 110]],
-      forest: [[34, 85, 34], [20, 60, 20], [60, 100, 60], [100, 140, 100], [140, 180, 140]],
+      warm: [
+        [255, 100, 50],
+        [255, 150, 0],
+        [200, 80, 80],
+        [180, 120, 60],
+        [220, 180, 100],
+      ],
+      cool: [
+        [50, 150, 255],
+        [100, 200, 200],
+        [150, 100, 255],
+        [80, 180, 150],
+        [120, 120, 200],
+      ],
+      earth: [
+        [139, 69, 19],
+        [160, 82, 45],
+        [210, 180, 140],
+        [107, 142, 35],
+        [85, 107, 47],
+      ],
+      ocean: [
+        [0, 119, 190],
+        [0, 150, 136],
+        [72, 201, 176],
+        [135, 206, 235],
+        [25, 25, 112],
+      ],
+      autumn: [
+        [255, 140, 0],
+        [255, 69, 0],
+        [220, 20, 60],
+        [184, 134, 11],
+        [139, 69, 19],
+      ],
+      spring: [
+        [154, 205, 50],
+        [124, 252, 0],
+        [173, 255, 47],
+        [50, 205, 50],
+        [0, 255, 127],
+      ],
+      summer: [
+        [255, 235, 59],
+        [255, 193, 7],
+        [76, 175, 80],
+        [139, 195, 74],
+        [3, 169, 244],
+      ],
+      winter: [
+        [224, 224, 224],
+        [144, 164, 174],
+        [96, 125, 139],
+        [33, 150, 243],
+        [0, 0, 128],
+      ],
+      pastel: [
+        [255, 204, 204],
+        [204, 255, 204],
+        [204, 204, 255],
+        [255, 255, 204],
+        [255, 204, 255],
+      ],
+      vibrant: [
+        [255, 0, 0],
+        [0, 255, 0],
+        [0, 0, 255],
+        [255, 255, 0],
+        [255, 0, 255],
+      ],
+      monochrome: [
+        [255, 255, 255],
+        [224, 224, 224],
+        [192, 192, 192],
+        [128, 128, 128],
+        [64, 64, 64],
+        [0, 0, 0],
+      ],
+      sunset: [
+        [255, 224, 130],
+        [255, 170, 85],
+        [255, 110, 80],
+        [200, 80, 120],
+        [100, 60, 110],
+      ],
+      forest: [
+        [34, 85, 34],
+        [20, 60, 20],
+        [60, 100, 60],
+        [100, 140, 100],
+        [140, 180, 140],
+      ],
     };
 
     let targetColors: [number, number, number][];
@@ -429,7 +531,7 @@ class InkMCPServer {
         const baseRgb = hexToRgb(theme);
         const baseHsl = rgbToHsl(baseRgb);
         const harmonyHsl = generateHarmonyColors(baseHsl, harmony);
-        targetColors = harmonyHsl.map(hsl => hslToRgb(hsl));
+        targetColors = harmonyHsl.map((hsl) => hslToRgb(hsl));
       } catch (error) {
         throw new Error('Invalid base color for harmony rule. Please use a single valid hex code.');
       }
@@ -437,12 +539,16 @@ class InkMCPServer {
       targetColors = themeColors[lowerCaseTheme];
     } else if (theme.startsWith('#') || theme.includes(',')) {
       try {
-        targetColors = theme.split(',').map(hex => hexToRgb(hex.trim()));
+        targetColors = theme.split(',').map((hex) => hexToRgb(hex.trim()));
       } catch (error) {
-        throw new Error('Invalid custom palette format. Please use a comma-separated list of hex codes, e.g., "#FF0000,#00FF00,#0000FF"');
+        throw new Error(
+          'Invalid custom palette format. Please use a comma-separated list of hex codes, e.g., "#FF0000,#00FF00,#0000FF"',
+        );
       }
     } else {
-      throw new Error(`Unknown theme: "${theme}". Available themes are: ${Object.keys(themeColors).join(', ')}`);
+      throw new Error(
+        `Unknown theme: "${theme}". Available themes are: ${Object.keys(themeColors).join(', ')}`,
+      );
     }
 
     const paletteInks: SearchResult[] = [];
@@ -450,8 +556,10 @@ class InkMCPServer {
 
     for (let i = 0; i < Math.min(paletteSize, targetColors.length); i++) {
       const targetRgb = targetColors[i];
-      const closestInks = findClosestInks(targetRgb, this.inkColors, 5).filter(ink => !usedInkIds.has(ink.ink_id));
-      
+      const closestInks = findClosestInks(targetRgb, this.inkColors, 5).filter(
+        (ink) => !usedInkIds.has(ink.ink_id),
+      );
+
       if (closestInks.length > 0) {
         const ink = closestInks[0];
         usedInkIds.add(ink.ink_id);

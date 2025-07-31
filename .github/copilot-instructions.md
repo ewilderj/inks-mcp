@@ -13,6 +13,7 @@ Additional reference: https://github.com/modelcontextprotocol/create-python-serv
 ## Project Goals
 
 This MCP server provides LLMs with specialized knowledge about fountain pen inks, including:
+
 - Searching inks by name using fuzzy matching
 - Finding inks by color similarity using RGB values
 - Getting detailed ink information including maker, properties, and metadata
@@ -22,6 +23,7 @@ This MCP server provides LLMs with specialized knowledge about fountain pen inks
 ## Data Structure
 
 The server works with two main data sources:
+
 - `ink-colors.json`: Contains ink RGB values, names, and IDs
 - `search.json`: Contains additional metadata like makers and scan dates
 

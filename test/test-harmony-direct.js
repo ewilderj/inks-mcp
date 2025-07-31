@@ -30,9 +30,9 @@ setTimeout(() => {
   const listToolsRequest = {
     jsonrpc: '2.0',
     id: requestId++,
-    method: 'tools/list'
+    method: 'tools/list',
   };
-  
+
   server.stdin.write(JSON.stringify(listToolsRequest) + '\n');
 }, 1000);
 
@@ -47,27 +47,27 @@ setTimeout(() => {
       arguments: {
         theme: '#FF0000',
         harmony: 'complementary',
-        palette_size: 2
-      }
-    }
+        palette_size: 2,
+      },
+    },
   };
-  
+
   console.log('🎯 Sending harmony test request:', JSON.stringify(harmonyRequest, null, 2));
   server.stdin.write(JSON.stringify(harmonyRequest) + '\n');
 }, 2000);
 
 // Process all responses
 setTimeout(() => {
-  const lines = stdout.split('\n').filter(line => line.trim());
-  
+  const lines = stdout.split('\n').filter((line) => line.trim());
+
   console.log('\n📄 Server Responses:');
-  
+
   for (const line of lines) {
     try {
       const response = JSON.parse(line);
-      
+
       if (response.result && response.result.tools) {
-        const paletteTool = response.result.tools.find(tool => tool.name === 'get_color_palette');
+        const paletteTool = response.result.tools.find((tool) => tool.name === 'get_color_palette');
         if (paletteTool) {
           console.log('\n✅ Tool Schema:');
           console.log('Has harmony parameter:', !!paletteTool.inputSchema.properties.harmony);
@@ -89,7 +89,7 @@ setTimeout(() => {
       // Skip invalid JSON
     }
   }
-  
+
   server.kill();
 }, 4000);
 

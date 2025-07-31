@@ -29,22 +29,24 @@ setTimeout(() => {
   const request = {
     jsonrpc: '2.0',
     id: 1,
-    method: 'tools/list'
+    method: 'tools/list',
   };
-  
+
   server.stdin.write(JSON.stringify(request) + '\n');
 }, 1000);
 
 // Process response and look for get_color_palette tool
 setTimeout(() => {
   try {
-    const lines = stdout.split('\n').filter(line => line.trim());
-    
+    const lines = stdout.split('\n').filter((line) => line.trim());
+
     for (const line of lines) {
       try {
         const response = JSON.parse(line);
         if (response.result && response.result.tools) {
-          const paletteTool = response.result.tools.find(tool => tool.name === 'get_color_palette');
+          const paletteTool = response.result.tools.find(
+            (tool) => tool.name === 'get_color_palette',
+          );
           if (paletteTool) {
             console.log('✅ Found get_color_palette tool schema:');
             console.log('Description:', paletteTool.description);
@@ -55,7 +57,7 @@ setTimeout(() => {
                 console.log(`  Allowed values: ${value.enum.join(', ')}`);
               }
             });
-            
+
             if (paletteTool.inputSchema.properties.harmony) {
               console.log('\n🎉 SUCCESS: harmony parameter is properly exposed!');
             } else {
@@ -70,7 +72,7 @@ setTimeout(() => {
   } catch (error) {
     console.error('Error parsing response:', error);
   }
-  
+
   server.kill();
 }, 3000);
 

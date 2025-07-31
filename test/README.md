@@ -5,12 +5,14 @@ This directory contains all tests and utilities for validating the MCP server fu
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 cd test
 node run-all-tests.js
 ```
 
 ### Run Individual Tests
+
 ```bash
 # Test enhanced palette features
 node test-enhanced-palette.js
@@ -72,23 +74,27 @@ node test-harmony-direct.js
 The test suite covers:
 
 ✅ **Palette Generation**
+
 - Predefined themes (13 total)
 - Color harmony rules (4 types)
 - Custom color palettes
 - Error handling and validation
 
 ✅ **MCP Protocol**
+
 - Tool schema compliance
 - Parameter exposure
 - Response formatting
 
 ✅ **Color Processing**
+
 - BGR→RGB conversion
 - HSL color space operations
 - Color family detection
 - Euclidean distance matching
 
 ✅ **Data Integrity**
+
 - Ink deduplication
 - Metadata correlation
 - Search functionality

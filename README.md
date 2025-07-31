@@ -6,35 +6,57 @@ A Model Context Protocol (MCP) server that provides LLMs with specialized knowle
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@ewilderj/inks-mcp/badge" alt="Fountain Pen Ink Server MCP server" />
 </a>
 
+[![CI](https://github.com/ewilderj/inks-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ewilderj/inks-mcp/actions/workflows/ci.yml)
+[![Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io)
+[![ESLint](https://img.shields.io/badge/lint-eslint-4B32C3?logo=eslint&logoColor=white)](https://eslint.org)
+
 ## Features
 
 This MCP server provides the following tools for LLMs:
 
 ### 🔍 Search Tools
+
 - **search_inks_by_name**: Fuzzy search for inks by name or manufacturer
 - **search_inks_by_color**: Find inks similar to any given color using RGB matching
 - **get_inks_by_maker**: List all inks from a specific manufacturer
 
 ### 📊 Information Tools
+
 - **get_ink_details**: Get comprehensive information about a specific ink
 - **analyze_color**: Analyze any color and find the closest matching inks
 
 ### 🎨 Recommendation Tools
+
 - **get_color_palette**: Generate sophisticated themed ink palettes with color theory support
   - 13 predefined themes (warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest)
   - Color harmony generation (complementary, analogous, triadic, split-complementary)
   - Custom hex color palettes
 
+## Quick start
+
+```bash
+git clone https://github.com/ewilderj/inks-mcp.git
+cd inks-mcp
+npm install
+npm run build
+
+# List tools and run a sample query
+npm run tools:list
+npm run client -- --tool search_inks_by_name --args '{"query":"sailor blue","max_results":5}'
+```
+
 ## Installation
 
 ### Prerequisites
+
 - Node.js 18 or higher
 - npm or yarn
 
 ### Setup
+
 ```bash
-# Clone or create the project
-git clone <repository-url>
+# Clone the project
+git clone https://github.com/ewilderj/inks-mcp.git
 cd inks-mcp
 
 # Install dependencies
@@ -47,6 +69,7 @@ npm run build
 ## Usage
 
 ### Running the Server
+
 ```bash
 # Run once
 npm start
@@ -74,131 +97,146 @@ Add this server to your MCP client configuration:
 }
 ```
 
-### VS Code Integration
+### CLI Client (Generic)
 
-For VS Code users, the project includes:
-- **Tasks**: Build, watch, and run the server
-- **MCP Configuration**: Pre-configured in `.vscode/mcp.json`
-- **Debug Support**: Use VS Code's integrated terminal to test the server
+A small script is included to exercise any tool from the command line:
+
+```bash
+# List tools
+npm run tools:list
+
+# Call a tool with inline JSON args
+npm run client -- --tool search_inks_by_name --args '{"query":"sailor blue","max_results":5}'
+
+# Call with arguments from a file
+npm run client -- --tool get_color_palette --args-file examples/palette.complementary.json
+
+# Change output mode (auto | content | raw)
+npm run client -- --tool search_inks_by_color --args '{"color":"#2E5984"}' --output content
+```
+
+Script options:
+
+- `--list` List available tools
+- `--tool <name>` Tool name to call
+- `--args '<json>'` Inline JSON arguments
+- `--args-file <path>` JSON file with arguments
+- `--server <path>` Path to compiled server (default: dist/index.js)
+- `--timeout <ms>` Timeout in milliseconds (default: 10000)
+- `--output <mode>` Output mode: auto | content | raw (default: auto)
 
 ## Available Tools
 
 ### search_inks_by_name
+
 Search for fountain pen inks using fuzzy text matching.
 
-**Parameters:**
-- `query` (string): Search term for ink name
-- `max_results` (number, optional): Maximum results to return (default: 20)
+Parameters: `query` (string), `max_results` (number, optional)
 
-**Example:**
+Example input:
+
 ```json
-{
-  "query": "sailor blue",
-  "max_results": 10
-}
+{ "query": "sailor blue", "max_results": 10 }
 ```
+
+Example prompt:
+
+- Find inks matching "sailor blue"; limit to 10 results.
 
 ### search_inks_by_color
+
 Find inks similar to a given color using RGB color space matching.
 
-**Parameters:**
-- `color` (string): Hex color code (e.g., "#FF5733")
-- `max_results` (number, optional): Maximum results to return (default: 20)
+Parameters: `color` (hex string), `max_results` (number, optional)
 
-**Example:**
+Example input:
+
 ```json
-{
-  "color": "#2E5984",
-  "max_results": 15
-}
+{ "color": "#2E5984", "max_results": 15 }
 ```
+
+Example prompt:
+
+- Find inks similar to color #2E5984; up to 15 results.
 
 ### get_ink_details
+
 Get complete information about a specific ink.
 
-**Parameters:**
-- `ink_id` (string): The unique identifier for the ink
+Parameters: `ink_id` (string)
 
-**Example:**
+Example input:
+
 ```json
-{
-  "ink_id": "sailor-ink-studio-462"
-}
+{ "ink_id": "diamine-oxblood" }
 ```
+
+Example prompt:
+
+- Show info for "diamine-oxblood".
 
 ### get_inks_by_maker
+
 List all inks from a specific manufacturer.
 
-**Parameters:**
-- `maker` (string): Manufacturer name (e.g., "sailor", "diamine", "pilot")
-- `max_results` (number, optional): Maximum results to return (default: 50)
+Parameters: `maker` (string), `max_results` (number, optional)
 
-**Example:**
+Example input:
+
 ```json
-{
-  "maker": "diamine",
-  "max_results": 25
-}
+{ "maker": "diamine", "max_results": 25 }
 ```
+
+Example prompt:
+
+- List Diamine inks; limit 25.
 
 ### analyze_color
+
 Analyze a color and provide fountain pen ink context.
 
-**Parameters:**
-- `color` (string): Hex color code (e.g., "#FF5733")
+Parameters: `color` (hex string), `max_results` (number, optional)
 
-**Example:**
+Example input:
+
 ```json
-{
-  "color": "#8B4513"
-}
+{ "color": "#2E5984", "max_results": 7 }
 ```
+
+Example prompt:
+
+- Analyze #2E5984 and show the top 7 closest inks.
 
 ### get_color_palette
-Generate a themed or harmony-based palette of fountain pen inks with sophisticated color theory support.
 
-**Parameters:**
-- `theme` (string): Theme name, comma-separated hex colors, or single hex color for harmony generation
-- `palette_size` (number, optional): Number of inks in palette (default: 5)
-- `harmony` (string, optional): Color harmony rule when using single hex color
+Generate a themed or harmony-based palette of fountain pen inks with color theory support.
 
-**Supported Themes:**
-- **Classic**: warm, cool, earth, ocean, autumn, spring
-- **Seasonal**: summer, winter  
-- **Mood**: pastel, vibrant, monochrome
-- **Atmospheric**: sunset, forest
+Parameters: `theme` (string), `palette_size` (number, optional), `harmony` (string, optional)
 
-**Harmony Rules:**
-- **complementary**: Base color + opposite color
-- **analogous**: Base color + adjacent colors  
-- **triadic**: Base color + two equidistant colors
-- **split-complementary**: Base color + colors adjacent to complement
+Supported Themes:
+- Classic: warm, cool, earth, ocean, autumn, spring
+- Seasonal: summer, winter
+- Mood: pastel, vibrant, monochrome
+- Atmospheric: sunset, forest
 
-**Examples:**
+Harmony Rules: complementary, analogous, triadic, split-complementary
+
+Example input:
+
 ```json
-// Predefined theme
-{
-  "theme": "sunset",
-  "palette_size": 4
-}
-
-// Custom hex colors
-{
-  "theme": "#FF6B35,#F7931E,#FFD700",
-  "palette_size": 3
-}
-
-// Color harmony generation
-{
-  "theme": "#2E5984", 
-  "harmony": "complementary",
-  "palette_size": 2
-}
+{ "theme": "sunset", "palette_size": 4 }
 ```
+
+Example prompt:
+
+- Generate a 4‑ink palette for the "sunset" theme.
+
+For more examples, see `examples/USAGE.md`.
 
 ## Data Sources
 
 The server uses two main data files:
+
 - **ink-colors.json**: Contains RGB color values and basic ink information
 - **search.json**: Contains metadata including manufacturers, scan dates, and searchable names
 
@@ -207,6 +245,7 @@ All ink data links back to [Wilder Writes](https://wilderwrites.ink/) for detail
 ## Development
 
 ### Project Structure
+
 ```
 inks-mcp/
 ├── src/
@@ -217,25 +256,22 @@ inks-mcp/
 │   ├── ink-colors.json   # RGB color data
 │   └── search.json       # Search metadata
 ├── dist/             # Compiled JavaScript (generated)
-└── .vscode/
-    ├── mcp.json      # MCP server configuration
-    └── tasks.json    # VS Code tasks
 ```
 
 ### Scripts
+
 - `npm run build`: Compile TypeScript to JavaScript
 - `npm run start`: Run the compiled server
 - `npm run dev`: Build and run in one command
 - `npm run watch`: Watch for changes and rebuild automatically
+- `npm run client`: Run the generic CLI client
+- `npm run tools:list`: List available tools via the CLI client
 
-### Testing
-You can test the server by running it and sending MCP protocol messages via stdin/stdout, or integrate it with an MCP-compatible client.
+## Testing
 
-### Testing
 Run the comprehensive test suite to validate all functionality:
 
 ```bash
-# Run all tests
 npm test
 
 # Run individual test categories
@@ -246,7 +282,10 @@ node test-schema.js             # Tool schema validation
 node test-harmony-direct.js     # Color harmony algorithms
 ```
 
+For manual, ad‑hoc testing, use the CLI client documented above.
+
 The test suite covers:
+
 - ✅ 13 predefined themes + 4 harmony rules
 - ✅ Custom color palette generation
 - ✅ MCP protocol compliance
@@ -256,11 +295,13 @@ The test suite covers:
 ## Color Matching Algorithm
 
 The server uses Euclidean distance in RGB color space to find similar inks:
+
 ```
 distance = √[(r₁-r₂)² + (g₁-g₂)² + (b₁-b₂)²]
 ```
 
 Future improvements may include:
+
 - LAB color space for better perceptual accuracy
 - Weighted color components for fountain pen ink characteristics
 - Semantic color descriptions
@@ -272,7 +313,6 @@ Future improvements may include:
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
-
 
 ## License
 

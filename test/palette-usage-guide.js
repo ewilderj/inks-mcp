@@ -5,11 +5,15 @@
 console.log('🎨 Complete Guide to Enhanced get_color_palette Tool\n');
 console.log('===================================================\n');
 
-console.log('The enhanced get_color_palette tool now supports multiple ways to generate palettes:\n');
+console.log(
+  'The enhanced get_color_palette tool now supports multiple ways to generate palettes:\n',
+);
 
 console.log('1️⃣ PREDEFINED THEMES');
 console.log('====================');
-console.log('Available themes: warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest\n');
+console.log(
+  'Available themes: warm, cool, earth, ocean, autumn, spring, summer, winter, pastel, vibrant, monochrome, sunset, forest\n',
+);
 
 console.log('Examples:');
 console.log('• { "theme": "summer", "palette_size": 3 }');
@@ -49,8 +53,12 @@ console.log('• Invalid harmony rules: Shows available options\n');
 
 console.log('5️⃣ IMPROVEMENTS IMPLEMENTED');
 console.log('============================');
-console.log('✅ Added 7 new predefined themes (summer, winter, pastel, vibrant, monochrome, sunset, forest)');
-console.log('✅ Implemented color harmony generation (complementary, analogous, triadic, split-complementary)');
+console.log(
+  '✅ Added 7 new predefined themes (summer, winter, pastel, vibrant, monochrome, sunset, forest)',
+);
+console.log(
+  '✅ Implemented color harmony generation (complementary, analogous, triadic, split-complementary)',
+);
 console.log('✅ Added support for custom hex color palettes');
 console.log('✅ Eliminated silent fallback - now shows proper error messages');
 console.log('✅ Added ink deduplication to prevent same ink appearing multiple times');
@@ -63,28 +71,28 @@ console.log('===============================');
 const examples = [
   {
     description: 'New summer theme',
-    args: { theme: 'summer', palette_size: 3 }
+    args: { theme: 'summer', palette_size: 3 },
   },
   {
     description: 'Monochrome theme (grayscale)',
-    args: { theme: 'monochrome', palette_size: 4 }
+    args: { theme: 'monochrome', palette_size: 4 },
   },
   {
     description: 'Complementary harmony from red',
-    args: { theme: '#FF0000', harmony: 'complementary', palette_size: 2 }
+    args: { theme: '#FF0000', harmony: 'complementary', palette_size: 2 },
   },
   {
     description: 'Triadic harmony from blue',
-    args: { theme: '#0000FF', harmony: 'triadic', palette_size: 3 }
+    args: { theme: '#0000FF', harmony: 'triadic', palette_size: 3 },
   },
   {
     description: 'Custom orange palette',
-    args: { theme: '#FF6B35,#F7931E,#FFD700', palette_size: 3 }
+    args: { theme: '#FF6B35,#F7931E,#FFD700', palette_size: 3 },
   },
   {
     description: 'Error test - invalid theme',
-    args: { theme: 'invalidtheme', palette_size: 3 }
-  }
+    args: { theme: 'invalidtheme', palette_size: 3 },
+  },
 ];
 
 console.log('Copy these JSON arguments to test with your MCP client:\n');
