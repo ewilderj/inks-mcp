@@ -1,4 +1,4 @@
-import { InkColor, InkSearchData, InkWithDistance, SearchResult } from './types.js';
+import type { InkColor, InkSearchData, InkWithDistance, SearchResult } from './types.js';
 
 /**
  * Convert hex color to RGB array
@@ -162,15 +162,16 @@ export function getColorDescription(rgb: [number, number, number]): string {
  * Convert RGB to HSL
  */
 export function rgbToHsl(rgb: [number, number, number]): [number, number, number] {
-  let [r, g, b] = rgb;
-  r /= 255;
-  g /= 255;
-  b /= 255;
+  const [rRaw, gRaw, bRaw] = rgb;
+  const r = rRaw / 255;
+  const g = gRaw / 255;
+  const b = bRaw / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0,
-    s = 0,
-    l = (max + min) / 2;
+  let h = 0;
+  // eslint-disable-next-line prefer-const
+  let s = 0;
+  const l = (max + min) / 2;
 
   if (max === min) {
     h = s = 0; // achromatic
@@ -200,7 +201,9 @@ export function rgbToHsl(rgb: [number, number, number]): [number, number, number
 export function hslToRgb(hsl: [number, number, number]): [number, number, number] {
   let [h, s, l] = hsl;
   h /= 360;
-  let r, g, b;
+  let r: number;
+  let g: number;
+  let b: number;
 
   if (s === 0) {
     r = g = b = l; // achromatic

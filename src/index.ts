@@ -8,11 +8,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
-import { InkColor, InkSearchData, SearchResult, ColorAnalysis, PaletteResult } from './types.js';
+import type {
+  InkColor,
+  InkSearchData,
+  SearchResult,
+  ColorAnalysis,
+  PaletteResult,
+} from './types.js';
 import {
   hexToRgb,
   bgrToRgb,
-  rgbToBgr,
   rgbToHex,
   findClosestInks,
   getColorFamily,
@@ -25,6 +30,16 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Helper types
+type MCPTextResponse = { content: Array<{ type: 'text'; text: string }> };
+type Harmony = 'complementary' | 'analogous' | 'triadic' | 'split-complementary';
+
+type RawInkColor = {
+  fullname: string;
+  ink_id: string;
+  rgb: [number, number, number]; // Source BGR triplet in data file
+};
 
 class InkMCPServer {
   private server: Server;
@@ -53,17 +68,26 @@ class InkMCPServer {
     try {
       // Load ink colors and convert BGR to RGB immediately
       const inkColorsPath = path.join(__dirname, '../data/ink-colors.json');
-      const rawInkColors = JSON.parse(fs.readFileSync(inkColorsPath, 'utf8'));
+      const inkColorsText = fs.readFileSync(inkColorsPath, 'utf8');
+      const parsedInkColors = JSON.parse(inkColorsText) as unknown;
+      if (!Array.isArray(parsedInkColors)) {
+        throw new Error('Invalid ink-colors.json format: expected an array');
+      }
 
       // Convert BGR to RGB at load time
-      this.inkColors = rawInkColors.map((ink: any) => ({
+      this.inkColors = (parsedInkColors as RawInkColor[]).map((ink) => ({
         ...ink,
         rgb: bgrToRgb(ink.rgb), // Convert BGR data to true RGB
       }));
 
       // Load search metadata
       const searchDataPath = path.join(__dirname, '../data/search.json');
-      this.inkSearchData = JSON.parse(fs.readFileSync(searchDataPath, 'utf8'));
+      const searchText = fs.readFileSync(searchDataPath, 'utf8');
+      const parsedSearch = JSON.parse(searchText) as unknown;
+      if (!Array.isArray(parsedSearch)) {
+        throw new Error('Invalid search.json format: expected an array');
+      }
+      this.inkSearchData = parsedSearch as InkSearchData[];
 
       // Setup fuzzy search
       this.fuse = new Fuse(this.inkSearchData, {
@@ -86,7 +110,7 @@ class InkMCPServer {
   }
 
   private setupToolHandlers() {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.setRequestHandler(ListToolsRequestSchema, () => {
       return {
         tools: [
           {
@@ -211,7 +235,7 @@ class InkMCPServer {
       };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, (request) => {
       const { name, arguments: args } = request.params;
 
       if (!args) {
@@ -221,34 +245,34 @@ class InkMCPServer {
       try {
         switch (name) {
           case 'search_inks_by_name':
-            return await this.searchInksByName(
+            return this.searchInksByName(
               args.query as string,
               (args.max_results as number) || 20,
             );
 
           case 'search_inks_by_color':
-            return await this.searchInksByColor(
+            return this.searchInksByColor(
               args.color as string,
               (args.max_results as number) || 20,
             );
 
           case 'get_ink_details':
-            return await this.getInkDetails(args.ink_id as string);
+            return this.getInkDetails(args.ink_id as string);
 
           case 'get_inks_by_maker':
-            return await this.getInksByMaker(
+            return this.getInksByMaker(
               args.maker as string,
               (args.max_results as number) || 50,
             );
 
           case 'analyze_color':
-            return await this.analyzeColor(args.color as string, (args.max_results as number) || 5);
+            return this.analyzeColor(args.color as string, (args.max_results as number) || 5);
 
           case 'get_color_palette':
-            return await this.getColorPalette(
+            return this.getColorPalette(
               args.theme as string,
               (args.palette_size as number) || 5,
-              args.harmony as any,
+              args.harmony as Harmony,
             );
 
           default:
@@ -262,12 +286,12 @@ class InkMCPServer {
               text: `Error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
-        };
+        } satisfies MCPTextResponse;
       }
     });
   }
 
-  private async searchInksByName(query: string, maxResults: number) {
+  private searchInksByName(query: string, maxResults: number): MCPTextResponse {
     const searchResults = this.fuse.search(query);
     const results: SearchResult[] = [];
 
@@ -295,10 +319,10 @@ class InkMCPServer {
           ),
         },
       ],
-    };
+    } satisfies MCPTextResponse;
   }
 
-  private async searchInksByColor(colorHex: string, maxResults: number) {
+  private searchInksByColor(colorHex: string, maxResults: number): MCPTextResponse {
     try {
       const targetRgb = hexToRgb(colorHex);
       const closestInks = findClosestInks(targetRgb, this.inkColors, maxResults);
@@ -324,13 +348,13 @@ class InkMCPServer {
             ),
           },
         ],
-      };
-    } catch (error) {
+      } satisfies MCPTextResponse;
+    } catch {
       throw new Error(`Invalid color format: ${colorHex}. Please use hex format like #FF5733`);
     }
   }
 
-  private async getInkDetails(inkId: string) {
+  private getInkDetails(inkId: string): MCPTextResponse {
     const inkColor = this.inkColors.find((ink) => ink.ink_id === inkId);
     const metadata = this.getInkMetadata(inkId);
 
@@ -356,10 +380,10 @@ class InkMCPServer {
           ),
         },
       ],
-    };
+    } satisfies MCPTextResponse;
   }
 
-  private async getInksByMaker(maker: string, maxResults: number) {
+  private getInksByMaker(maker: string, maxResults: number): MCPTextResponse {
     const makerLower = maker.toLowerCase();
     const makerInks = this.inkSearchData
       .filter((item) => item.maker.toLowerCase() === makerLower)
@@ -389,10 +413,10 @@ class InkMCPServer {
           ),
         },
       ],
-    };
+    } satisfies MCPTextResponse;
   }
 
-  private async analyzeColor(colorHex: string, maxResults: number = 5): Promise<any> {
+  private analyzeColor(colorHex: string, maxResults: number = 5): MCPTextResponse {
     try {
       const rgb = hexToRgb(colorHex);
       const closestInks = findClosestInks(rgb, this.inkColors, maxResults);
@@ -417,17 +441,17 @@ class InkMCPServer {
             text: JSON.stringify(analysis, null, 2),
           },
         ],
-      };
-    } catch (error) {
+      } satisfies MCPTextResponse;
+    } catch {
       throw new Error(`Invalid color format: ${colorHex}. Please use hex format like #FF5733`);
     }
   }
 
-  private async getColorPalette(
+  private getColorPalette(
     theme: string,
     paletteSize: number,
-    harmony?: 'complementary' | 'analogous' | 'triadic' | 'split-complementary',
-  ): Promise<any> {
+    harmony?: Harmony,
+  ): MCPTextResponse {
     const themeColors: { [key: string]: [number, number, number][] } = {
       warm: [
         [255, 100, 50],
@@ -532,7 +556,7 @@ class InkMCPServer {
         const baseHsl = rgbToHsl(baseRgb);
         const harmonyHsl = generateHarmonyColors(baseHsl, harmony);
         targetColors = harmonyHsl.map((hsl) => hslToRgb(hsl));
-      } catch (error) {
+      } catch {
         throw new Error('Invalid base color for harmony rule. Please use a single valid hex code.');
       }
     } else if (themeColors[lowerCaseTheme]) {
@@ -540,7 +564,7 @@ class InkMCPServer {
     } else if (theme.startsWith('#') || theme.includes(',')) {
       try {
         targetColors = theme.split(',').map((hex) => hexToRgb(hex.trim()));
-      } catch (error) {
+      } catch {
         throw new Error(
           'Invalid custom palette format. Please use a comma-separated list of hex codes, e.g., "#FF0000,#00FF00,#0000FF"',
         );
@@ -581,7 +605,7 @@ class InkMCPServer {
           text: JSON.stringify(palette, null, 2),
         },
       ],
-    };
+    } satisfies MCPTextResponse;
   }
 
   async run() {
