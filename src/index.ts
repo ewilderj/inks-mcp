@@ -41,12 +41,20 @@ type RawInkColor = {
   rgb: [number, number, number]; // Source BGR triplet in data file
 };
 
+/**
+ * MCP Server for fountain pen ink knowledge and recommendations
+ * Provides tools for searching inks by name/color, analyzing colors, and generating palettes
+ */
 class InkMCPServer {
   private server: Server;
   private inkColors: InkColor[] = [];
   private inkSearchData: InkSearchData[] = [];
   private fuse!: Fuse<InkSearchData>;
 
+  /**
+   * Initialize the MCP server with capabilities and data loading
+   * Sets up the server with tool capabilities and loads ink data from JSON files
+   */
   constructor() {
     this.server = new Server(
       {
@@ -64,6 +72,11 @@ class InkMCPServer {
     this.loadData();
   }
 
+  /**
+   * Load ink data from JSON files and set up fuzzy search
+   * Converts BGR color data to RGB format and initializes search index
+   * @private
+   */
   private loadData() {
     try {
       // Load ink colors and convert BGR to RGB immediately
@@ -105,10 +118,21 @@ class InkMCPServer {
     }
   }
 
+  /**
+   * Get search metadata for a specific ink by ID
+   * @private
+   * @param inkId - Unique ink identifier
+   * @returns Search metadata or undefined if not found
+   */
   private getInkMetadata(inkId: string): InkSearchData | undefined {
     return this.inkSearchData.find((item) => item.ink_id === inkId);
   }
 
+  /**
+   * Set up MCP tool handlers and request routing
+   * Registers all available tools and their schemas with the MCP server
+   * @private
+   */
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, () => {
       return {
@@ -291,6 +315,13 @@ class InkMCPServer {
     });
   }
 
+  /**
+   * Search for fountain pen inks by name using fuzzy matching
+   * @public
+   * @param query - Search term for ink name
+   * @param maxResults - Maximum number of results to return
+   * @returns MCP response with search results in JSON format
+   */
   private searchInksByName(query: string, maxResults: number): MCPTextResponse {
     const searchResults = this.fuse.search(query);
     const results: SearchResult[] = [];
@@ -322,6 +353,14 @@ class InkMCPServer {
     } satisfies MCPTextResponse;
   }
 
+  /**
+   * Find inks similar to a given color using RGB color matching
+   * @public
+   * @param colorHex - Hex color code (e.g., "#FF5733")
+   * @param maxResults - Maximum number of results to return
+   * @returns MCP response with closest matching inks in JSON format
+   * @throws Error if color format is invalid
+   */
   private searchInksByColor(colorHex: string, maxResults: number): MCPTextResponse {
     try {
       const targetRgb = hexToRgb(colorHex);
@@ -354,6 +393,13 @@ class InkMCPServer {
     }
   }
 
+  /**
+   * Get complete information about a specific ink
+   * @public
+   * @param inkId - Unique identifier for the ink
+   * @returns MCP response with detailed ink information in JSON format
+   * @throws Error if ink is not found
+   */
   private getInkDetails(inkId: string): MCPTextResponse {
     const inkColor = this.inkColors.find((ink) => ink.ink_id === inkId);
     const metadata = this.getInkMetadata(inkId);
@@ -383,6 +429,13 @@ class InkMCPServer {
     } satisfies MCPTextResponse;
   }
 
+  /**
+   * List all inks from a specific manufacturer
+   * @public
+   * @param maker - Manufacturer name (case-insensitive, e.g., "sailor", "diamine")
+   * @param maxResults - Maximum number of results to return
+   * @returns MCP response with inks from the specified maker in JSON format
+   */
   private getInksByMaker(maker: string, maxResults: number): MCPTextResponse {
     const makerLower = maker.toLowerCase();
     const makerInks = this.inkSearchData
@@ -416,6 +469,15 @@ class InkMCPServer {
     } satisfies MCPTextResponse;
   }
 
+  /**
+   * Analyze a color and provide ink knowledge context
+   * Provides color family, description, and closest matching inks
+   * @public
+   * @param colorHex - Hex color code (e.g., "#FF5733")
+   * @param maxResults - Maximum number of closest inks to return (default: 5)
+   * @returns MCP response with color analysis and closest inks in JSON format
+   * @throws Error if color format is invalid
+   */
   private analyzeColor(colorHex: string, maxResults: number = 5): MCPTextResponse {
     try {
       const rgb = hexToRgb(colorHex);
@@ -447,6 +509,16 @@ class InkMCPServer {
     }
   }
 
+  /**
+   * Generate a themed or harmony-based palette of inks
+   * Supports three modes: 1) Predefined themes, 2) Custom hex color lists, 3) Color harmony generation
+   * @public
+   * @param theme - Theme name, comma-separated hex colors, or single hex color for harmony
+   * @param paletteSize - Number of inks in the palette
+   * @param harmony - Color harmony rule (required when theme is a single hex color)
+   * @returns MCP response with curated ink palette in JSON format
+   * @throws Error if theme is invalid or harmony rule is missing for single color
+   */
   private getColorPalette(
     theme: string,
     paletteSize: number,
@@ -608,6 +680,11 @@ class InkMCPServer {
     } satisfies MCPTextResponse;
   }
 
+  /**
+   * Start the MCP server with stdio transport
+   * Connects the server to stdio for communication with MCP clients
+   * @public
+   */
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
