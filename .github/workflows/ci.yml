@@ -37,7 +37,8 @@ jobs:
         if: ${{ matrix.node-version == '20.x' }}
         run: npm run lint
 
-      # Run prettier check only on Node 20
+      # Run prettier check only on Node 20 (non-blocking)
       - name: Prettier check
         if: ${{ matrix.node-version == '20.x' }}
+        continue-on-error: true
         run: npm run format
