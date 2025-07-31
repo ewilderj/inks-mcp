@@ -1,7 +1,16 @@
 import type { InkColor, InkSearchData, InkWithDistance, SearchResult } from './types.js';
 
 /**
- * Convert hex color to RGB array
+ * Convert hex color string to RGB array
+ * @public
+ * @param hex - Hex color string (with or without # prefix, e.g., "#FF5733" or "FF5733")
+ * @returns RGB array with values 0-255 [R, G, B]
+ * @throws Error if hex string is invalid format
+ * @example
+ * ```typescript
+ * hexToRgb("#FF5733") // returns [255, 87, 51]
+ * hexToRgb("00FF00") // returns [0, 255, 0]
+ * ```
  */
 export function hexToRgb(hex: string): [number, number, number] {
   const cleanHex = hex.replace(/^#/, '');
@@ -20,6 +29,12 @@ export function hexToRgb(hex: string): [number, number, number] {
 /**
  * Convert BGR array (as stored in ink-colors.json) to RGB array
  * Used at data load time to convert the source BGR data to RGB format
+ * @param bgr - BGR array [B, G, R] with values 0-255
+ * @returns RGB array [R, G, B] with values 0-255
+ * @example
+ * ```typescript
+ * bgrToRgb([51, 87, 255]) // returns [255, 87, 51]
+ * ```
  */
 export function bgrToRgb(bgr: [number, number, number]): [number, number, number] {
   const [b, g, r] = bgr;
@@ -37,6 +52,14 @@ export function rgbToBgr(rgb: [number, number, number]): [number, number, number
 
 /**
  * Convert RGB array to hex string
+ * @public
+ * @param rgb - RGB array [R, G, B] with values 0-255
+ * @returns Hex color string with # prefix (e.g., "#FF5733")
+ * @example
+ * ```typescript
+ * rgbToHex([255, 87, 51]) // returns "#FF5733"
+ * rgbToHex([0, 255, 0]) // returns "#00FF00"
+ * ```
  */
 export function rgbToHex(rgb: [number, number, number]): string {
   const [r, g, b] = rgb;
@@ -45,7 +68,16 @@ export function rgbToHex(rgb: [number, number, number]): string {
 
 /**
  * Calculate Euclidean distance between two RGB colors
- * Now simplified - both inputs are RGB format
+ * Uses the standard RGB distance formula: sqrt((r1-r2)² + (g1-g2)² + (b1-b2)²)
+ * @public
+ * @param rgb1 - First RGB color [R, G, B] with values 0-255
+ * @param rgb2 - Second RGB color [R, G, B] with values 0-255
+ * @returns Distance value (0 = identical colors, ~441 = maximum distance)
+ * @example
+ * ```typescript
+ * calculateColorDistance([255, 0, 0], [255, 0, 0]) // returns 0 (identical)
+ * calculateColorDistance([255, 0, 0], [0, 255, 0]) // returns ~360.6
+ * ```
  */
 export function calculateColorDistance(
   rgb1: [number, number, number],
@@ -58,8 +90,18 @@ export function calculateColorDistance(
 }
 
 /**
- * Find inks closest to a given color
- * Now simplified - both target and ink colors are RGB
+ * Find inks closest to a given target color
+ * Sorts all inks by color distance and returns the closest matches
+ * @public
+ * @param targetRgb - Target RGB color [R, G, B] with values 0-255
+ * @param inkColors - Array of ink color objects to search through
+ * @param maxResults - Maximum number of results to return (default: 20)
+ * @returns Array of inks with distance values, sorted by closest first
+ * @example
+ * ```typescript
+ * const closest = findClosestInks([255, 0, 0], inkColors, 5);
+ * // Returns 5 inks closest to red, each with a distance property
+ * ```
  */
 export function findClosestInks(
   targetRgb: [number, number, number],
@@ -79,7 +121,16 @@ export function findClosestInks(
 
 /**
  * Determine color family based on RGB values
- * Now simplified - input is already RGB format
+ * Analyzes RGB components to classify color into families like "red", "blue", "green", etc.
+ * @public
+ * @param rgb - RGB color [R, G, B] with values 0-255
+ * @returns Color family string (e.g., "red", "blue", "green", "yellow", "purple", "orange", "gray", "mixed")
+ * @example
+ * ```typescript
+ * getColorFamily([255, 0, 0]) // returns "red"
+ * getColorFamily([128, 128, 128]) // returns "gray"
+ * getColorFamily([255, 165, 0]) // returns "orange"
+ * ```
  */
 export function getColorFamily(rgb: [number, number, number]): string {
   const [r, g, b] = rgb; // No conversion needed!
@@ -138,8 +189,17 @@ export function getColorFamily(rgb: [number, number, number]): string {
 }
 
 /**
- * Generate a color description based on RGB values
- * Now simplified - input is already RGB format
+ * Generate a descriptive color description based on RGB values
+ * Combines brightness, saturation, and color family into a human-readable description
+ * @public
+ * @param rgb - RGB color [R, G, B] with values 0-255
+ * @returns Descriptive string (e.g., "dark vibrant red", "light muted blue", "bright yellow")
+ * @example
+ * ```typescript
+ * getColorDescription([255, 0, 0]) // returns "vibrant red"
+ * getColorDescription([64, 64, 64]) // returns "dark gray"
+ * getColorDescription([255, 200, 200]) // returns "light red"
+ * ```
  */
 export function getColorDescription(rgb: [number, number, number]): string {
   const [r, g, b] = rgb; // No conversion needed!
@@ -159,7 +219,15 @@ export function getColorDescription(rgb: [number, number, number]): string {
 }
 
 /**
- * Convert RGB to HSL
+ * Convert RGB color to HSL color space
+ * @public
+ * @param rgb - RGB color [R, G, B] with values 0-255
+ * @returns HSL array [H, S, L] where H is 0-360 degrees, S and L are 0-1
+ * @example
+ * ```typescript
+ * rgbToHsl([255, 0, 0]) // returns [0, 1, 0.5] (pure red)
+ * rgbToHsl([128, 128, 128]) // returns [0, 0, 0.5] (gray)
+ * ```
  */
 export function rgbToHsl(rgb: [number, number, number]): [number, number, number] {
   const [rRaw, gRaw, bRaw] = rgb;
@@ -196,7 +264,15 @@ export function rgbToHsl(rgb: [number, number, number]): [number, number, number
 }
 
 /**
- * Convert HSL to RGB
+ * Convert HSL color to RGB color space
+ * @public
+ * @param hsl - HSL color [H, S, L] where H is 0-360 degrees, S and L are 0-1
+ * @returns RGB array [R, G, B] with values 0-255
+ * @example
+ * ```typescript
+ * hslToRgb([0, 1, 0.5]) // returns [255, 0, 0] (pure red)
+ * hslToRgb([120, 1, 0.5]) // returns [0, 255, 0] (pure green)
+ * ```
  */
 export function hslToRgb(hsl: [number, number, number]): [number, number, number] {
   // eslint-disable-next-line prefer-const 
@@ -228,7 +304,19 @@ export function hslToRgb(hsl: [number, number, number]): [number, number, number
 }
 
 /**
- * Generate a set of harmony colors from a base color
+ * Generate a set of harmony colors from a base color using color theory
+ * @public
+ * @param baseHsl - Base HSL color [H, S, L] where H is 0-360 degrees, S and L are 0-1
+ * @param harmony - Color harmony rule to apply
+ * @returns Array of HSL colors following the specified harmony rule
+ * @example
+ * ```typescript
+ * // Generate complementary colors (opposite on color wheel)
+ * generateHarmonyColors([0, 1, 0.5], 'complementary') // red + cyan
+ * 
+ * // Generate triadic colors (120° apart)
+ * generateHarmonyColors([0, 1, 0.5], 'triadic') // red + green + blue
+ * ```
  */
 export function generateHarmonyColors(
   baseHsl: [number, number, number],
@@ -247,7 +335,18 @@ export function generateHarmonyColors(
 }
 
 /**
- * Create a SearchResult from ink data
+ * Create a SearchResult object from ink data and optional metadata
+ * Builds a complete search result with URLs for ink details and images
+ * @public
+ * @param ink - Ink color data
+ * @param metadata - Optional search metadata (maker, scan date, etc.)
+ * @param distance - Optional color distance value for similarity searches
+ * @returns Complete SearchResult object with URLs to ink details and images
+ * @example
+ * ```typescript
+ * const result = createSearchResult(inkColor, metadata, 15.2);
+ * // Returns object with ink data, metadata, distance, and wilderwrites.ink URLs
+ * ```
  */
 export function createSearchResult(
   ink: InkColor,
