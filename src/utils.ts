@@ -199,6 +199,7 @@ export function rgbToHsl(rgb: [number, number, number]): [number, number, number
  * Convert HSL to RGB
  */
 export function hslToRgb(hsl: [number, number, number]): [number, number, number] {
+  // eslint-disable-next-line prefer-const 
   let [h, s, l] = hsl;
   h /= 360;
   let r: number;
