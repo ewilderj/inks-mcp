@@ -24,16 +24,10 @@
 
 ## 🟢 Low Priority (Future Enhancements)
 
-- [ ] Implement spatial indexing for color matching
-- [ ] Add caching layer for frequent requests
-- [ ] Optimize data loading
-- [ ] Add ink property search (shimmer, sheen, etc.)
 - [ ] Implement color temperature analysis
-- [ ] Add seasonal recommendations
-- [ ] Create ink mixing suggestions
-- [ ] Validate RGB data completeness
-- [ ] Add ink property metadata
-- [ ] Implement data quality checks
-- [ ] Add CI/CD pipeline
-- [ ] Add automated testing
-- [ ] Add code formatting and linting
+  - Scope:
+    - Define a warmth score in the range [-1, 1] (cool → warm) derived from HSL hue, attenuated by saturation and lightness.
+    - Add color_temperature to analyze_color response: { score, label } where label ∈ { "cool", "neutral", "warm" }.
+    - Optionally allow filtering by temperature in search_inks_by_color or add a dedicated get_inks_by_temperature tool.
+    - Add unit tests for canonical colors (#FF0000 warm, #0000FF cool, grays neutral) and a couple of integration checks.
+    - Document behavior and examples in README and examples/USAGE.md.
