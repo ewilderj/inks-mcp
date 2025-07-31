@@ -3,10 +3,16 @@
 // Direct test of the MCP server to confirm harmony parameter works
 
 import { spawn } from 'child_process';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const repoRoot = join(__dirname, '..');
 
 console.log('🔍 Testing MCP Server Harmony Parameter...\n');
 
-const server = spawn('node', ['dist/index.js'], { cwd: '/Users/edd/git/inks-mcp' });
+const server = spawn('node', ['dist/index.js'], { cwd: repoRoot });
 
 let stdout = '';
 let requestId = 1;

@@ -9,17 +9,34 @@
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "watch": "tsc --watch",
-    "test": "cd test && node run-all-tests.js"
+    "test": "npm run build && node test/run-all-tests.js"
   },
-  "keywords": ["mcp", "fountain-pen", "ink", "color", "search"],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "mcp",
+    "fountain-pen",
+    "ink",
+    "color",
+    "search"
+  ],
+  "author": "Edd Wilder-James",
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ewilderj/inks-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ewilderj/inks-mcp/issues"
+  },
+  "homepage": "https://github.com/ewilderj/inks-mcp#readme",
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/node": "^24.1.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
-    "@types/node": "^24.1.0",
     "fuse.js": "^7.1.0",
     "zod": "^3.25.76"
   }

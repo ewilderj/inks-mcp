@@ -3,10 +3,16 @@
 // Test the MCP server schema to verify harmony parameter is exposed
 
 import { spawn } from 'child_process';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 console.log('🔍 Testing MCP Server Schema...\n');
 
-const server = spawn('npm', ['start'], { cwd: '/Users/edd/git/inks-mcp' });
+const repoRoot = join(__dirname, '..');
+const server = spawn('npm', ['start'], { cwd: repoRoot });
 
 let stdout = '';
 
